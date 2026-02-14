@@ -90,10 +90,10 @@ class JsonPlaceholderService {
     // ============================================
     // ALL PATTERNS COMBINED (for demo purposes)
     // ============================================
-    @Retry(name = "mainService", fallbackMethod = "fallbackMono")
-    @CircuitBreaker(name = "mainService", fallbackMethod = "fallbackMono")
-    @RateLimiter(name = "mainService", fallbackMethod = "fallbackMono")
-    @Bulkhead(name = "mainService", fallbackMethod = "fallbackMono")
+    @Retry(name = "mainService", fallbackMethod = "fallbackForAllPatterns")
+    @CircuitBreaker(name = "mainService", fallbackMethod = "fallbackForAllPatterns")
+    @RateLimiter(name = "mainService", fallbackMethod = "fallbackForAllPatterns")
+    @Bulkhead(name = "mainService", fallbackMethod = "fallbackForAllPatterns")
     public Mono<String> getPostsWithAllPatterns(long sleepMs) {
         return Mono.delay(Duration.ofMillis(sleepMs))
                 .flatMap(tick -> this.webClient.get()
@@ -107,23 +107,26 @@ class JsonPlaceholderService {
     // ============================================
     // RETRY PATTERN
     // ============================================
-    @Retry(name = "retryService", fallbackMethod = "fallbackMono")
+    @Retry(name = "retryService", fallbackMethod = "fallbackForRetry")
     public Mono<String> testRetry(boolean shouldFail) {
         int attempt = retryCounter.incrementAndGet();
         System.out.println("🔄 Retry attempt: " + attempt);
 
-        if (shouldFail && attempt < 3) {
+        // Fail on attempts 1 and 2, succeed on attempt 3
+        if (shouldFail && attempt <= 2) {
             return Mono.error(new RuntimeException("Simulated failure on attempt " + attempt));
         }
 
-        retryCounter.set(0); // Reset for next test
-        return Mono.just("✅ Retry succeeded after " + attempt + " attempt(s)");
+        // Success - reset counter for next test
+        int finalAttempt = attempt;
+        retryCounter.set(0);
+        return Mono.just("✅ Retry succeeded after " + finalAttempt + " attempt(s)");
     }
 
     // ============================================
     // CIRCUIT BREAKER PATTERN
     // ============================================
-    @CircuitBreaker(name = "circuitBreakerService", fallbackMethod = "fallbackMono")
+    @CircuitBreaker(name = "circuitBreakerService", fallbackMethod = "fallbackForCircuitBreaker")
     public Mono<String> testCircuitBreaker(boolean shouldFail) {
         int attempt = circuitBreakerCounter.incrementAndGet();
         System.out.println("⚡ Circuit breaker attempt: " + attempt);
@@ -138,7 +141,7 @@ class JsonPlaceholderService {
     // ============================================
     // RATE LIMITER PATTERN
     // ============================================
-    @RateLimiter(name = "rateLimiterService", fallbackMethod = "fallbackMono")
+    @RateLimiter(name = "rateLimiterService", fallbackMethod = "fallbackForRateLimiter")
     public Mono<String> testRateLimiter() {
         long timestamp = System.currentTimeMillis();
         System.out.println("🚦 Rate limiter called at: " + timestamp);
@@ -148,7 +151,7 @@ class JsonPlaceholderService {
     // ============================================
     // BULKHEAD PATTERN
     // ============================================
-    @Bulkhead(name = "bulkheadService", fallbackMethod = "fallbackMono")
+    @Bulkhead(name = "bulkheadService", fallbackMethod = "fallbackForBulkhead")
     public Mono<String> testBulkhead(long delayMs) {
         System.out.println("🏊 Bulkhead: Processing request with " + delayMs + "ms delay");
         return Mono.delay(Duration.ofMillis(delayMs))
@@ -177,26 +180,38 @@ class JsonPlaceholderService {
     // FALLBACK METHODS
     // ============================================
 
-    // Fallback for Mono methods
-    public Mono<String> fallbackMono(Throwable t) {
-        return Mono.just("❌ Fallback triggered: " + t.getClass()
-                .getSimpleName() + " - " + t.getMessage());
+    // Fallback for getPostsWithAllPatterns(long sleepMs)
+    public Mono<String> fallbackForAllPatterns(long sleepMs, Throwable t) {
+        return Mono.just("❌ Fallback (delay=" + sleepMs + "ms): " + t.getClass()
+                .getSimpleName());
     }
 
-    public Mono<String> fallbackMono(long delayMs, Throwable t) {
-        return Mono.just("❌ Fallback (delay=" + delayMs + "ms): " + t.getClass()
-                .getSimpleName() + " - " + t.getMessage());
+    // Fallback for testRetry(boolean shouldFail)
+    public Mono<String> fallbackForRetry(boolean shouldFail, Throwable t) {
+        return Mono.just("❌ Retry Fallback (shouldFail=" + shouldFail + "): " + t.getClass()
+                .getSimpleName());
     }
 
-    public Mono<String> fallbackMono(boolean shouldFail, Throwable t) {
-        return Mono.just("❌ Fallback (shouldFail=" + shouldFail + "): " + t.getClass()
-                .getSimpleName() + " - " + t.getMessage());
+    // Fallback for testCircuitBreaker(boolean shouldFail)
+    public Mono<String> fallbackForCircuitBreaker(boolean shouldFail,
+                                                  Throwable t) {
+        return Mono.just("❌ Circuit Breaker Fallback: " + t.getClass()
+                .getSimpleName());
+    }
+
+    // Fallback for testRateLimiter()
+    public Mono<String> fallbackForRateLimiter(Throwable t) {
+        return Mono.just("❌ Rate Limiter Fallback: Too many requests");
+    }
+
+    // Fallback for testBulkhead(long delayMs)
+    public Mono<String> fallbackForBulkhead(long delayMs, Throwable t) {
+        return Mono.just("❌ Bulkhead Fallback: No available slots");
     }
 
     // Fallback for CompletableFuture methods
     public CompletableFuture<String> fallbackCompletableFuture(long delayMs,
                                                                Throwable t) {
-        return CompletableFuture.completedFuture("❌ Time Limiter Fallback: " + t.getClass()
-                .getSimpleName() + " - Operation exceeded timeout");
+        return CompletableFuture.completedFuture("❌ Time Limiter Fallback: Operation exceeded timeout");
     }
 }

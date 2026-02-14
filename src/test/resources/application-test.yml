@@ -5,7 +5,6 @@ spring:
     name: resilience4j-patterns-playground-test
 
 # Resilience4j Test Configuration
-# Using shorter timeouts and smaller windows for faster tests
 resilience4j:
   circuitbreaker:
     instances:
@@ -81,6 +80,4 @@ management:
 logging:
   level:
     io.github.resilience4j: INFO
-    dev.dead.resillience4jpatternsplayground: INFO
-    org.springframework.web: WARN
-    reactor.netty: WARN
+    dev.dead.resillience4jpatternsplayground: DEBUG
