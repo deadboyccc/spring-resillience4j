@@ -96,3 +96,20 @@ logging:
   level:
     io.github.resilience4j: DEBUG
     dev.dead.resillience4jpatternsplayground: DEBUG
+
+# ============================================
+# ACTUATOR CONFIGURATION
+# ============================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics,circuitbreakers,circuitbreakerevents,ratelimiters,bulkheads
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+    ratelimiters:
+      enabled: true
