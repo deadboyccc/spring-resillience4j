@@ -1,0 +1,86 @@
+# Test Configuration for Resilience4j Patterns
+
+spring:
+  application:
+    name: resilience4j-patterns-playground-test
+
+# Resilience4j Test Configuration
+# Using shorter timeouts and smaller windows for faster tests
+resilience4j:
+  circuitbreaker:
+    instances:
+      mainService:
+        slidingWindowSize: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 2s
+        permittedNumberOfCallsInHalfOpenState: 2
+        minimumNumberOfCalls: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+
+      circuitBreakerService:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 2s
+        permittedNumberOfCallsInHalfOpenState: 2
+        minimumNumberOfCalls: 5
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+
+  retry:
+    instances:
+      mainService:
+        maxAttempts: 3
+        waitDuration: 100ms
+
+      retryService:
+        maxAttempts: 3
+        waitDuration: 100ms
+
+  ratelimiter:
+    instances:
+      mainService:
+        limitForPeriod: 2
+        limitRefreshPeriod: 5s
+        timeoutDuration: 0
+
+      rateLimiterService:
+        limitForPeriod: 5
+        limitRefreshPeriod: 10s
+        timeoutDuration: 0ms
+
+  bulkhead:
+    instances:
+      mainService:
+        maxConcurrentCalls: 3
+        maxWaitDuration: 0
+
+      bulkheadService:
+        maxConcurrentCalls: 2
+        maxWaitDuration: 100ms
+
+  timelimiter:
+    instances:
+      mainService:
+        timeoutDuration: 2s
+        cancelRunningFuture: true
+
+      timeLimiterService:
+        timeoutDuration: 3s
+        cancelRunningFuture: true
+
+# Actuator Configuration for Tests
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,circuitbreakers,ratelimiters,bulkheads
+  endpoint:
+    health:
+      show-details: always
+
+# Logging Configuration for Tests
+logging:
+  level:
+    io.github.resilience4j: INFO
+    dev.dead.resillience4jpatternsplayground: INFO
+    org.springframework.web: WARN
+    reactor.netty: WARN
