@@ -109,18 +109,21 @@ class JsonPlaceholderService {
     // ============================================
     @Retry(name = "retryService", fallbackMethod = "fallbackForRetry")
     public Mono<String> testRetry(boolean shouldFail) {
-        int attempt = retryCounter.incrementAndGet();
-        System.out.println("🔄 Retry attempt: " + attempt);
+        // Use Mono.defer to ensure this logic runs on EACH subscription (including retries)
+        return Mono.defer(() -> {
+            int attempt = retryCounter.incrementAndGet();
+            System.out.println("🔄 Retry attempt: " + attempt);
 
-        // Fail on attempts 1 and 2, succeed on attempt 3
-        if (shouldFail && attempt <= 2) {
-            return Mono.error(new RuntimeException("Simulated failure on attempt " + attempt));
-        }
+            // Fail on attempts 1 and 2, succeed on attempt 3
+            if (shouldFail && attempt <= 2) {
+                return Mono.error(new RuntimeException("Simulated failure on attempt " + attempt));
+            }
 
-        // Success - reset counter for next test
-        int finalAttempt = attempt;
-        retryCounter.set(0);
-        return Mono.just("✅ Retry succeeded after " + finalAttempt + " attempt(s)");
+            // Success - reset counter for next test
+            int finalAttempt = attempt;
+            retryCounter.set(0);
+            return Mono.just("✅ Retry succeeded after " + finalAttempt + " attempt(s)");
+        });
     }
 
     // ============================================

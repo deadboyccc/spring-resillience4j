@@ -65,16 +65,18 @@ class ResiliencePatternTests {
 
     @Test
     void testRetry_shouldSucceedAfterRetries() {
-        // Reset counter before test
-        retryRegistry.retry("retryService")
-                .getEventPublisher()
-                .onRetry(event -> System.out.println("📊 Retry event: " + event));
+        // Subscribe to retry events for visibility
+        var retry = retryRegistry.retry("retryService");
+        retry.getEventPublisher()
+                .onRetry(event ->
+                        System.out.println("📊 Retry event - attempt: " + event.getNumberOfRetryAttempts())
+                );
 
-        // When shouldFail=true, it fails twice (attempts 1,2) then succeeds (attempt 3)
+        // When shouldFail=true, it should fail twice then succeed on 3rd attempt
         StepVerifier.create(service.testRetry(true))
                 .expectNextMatches(response -> {
-                    System.out.println("Final response: " + response);
-                    return response.contains("succeeded");
+                    System.out.println("Final result: " + response);
+                    return response.contains("succeeded after 3");
                 })
                 .verifyComplete();
     }
@@ -83,13 +85,13 @@ class ResiliencePatternTests {
     void testRetry_shouldSucceedImmediatelyWhenNoFailure() {
         // When shouldFail=false, succeeds immediately
         StepVerifier.create(service.testRetry(false))
-                .expectNextMatches(response -> response.contains("succeeded"))
+                .expectNextMatches(response -> response.contains("succeeded after 1"))
                 .verifyComplete();
     }
 
     @Test
     void testRetry_viaHttpEndpoint() {
-        // Via HTTP endpoint
+        // Via HTTP endpoint - should succeed after retries
         webTestClient.get()
                 .uri("/test-retry?shouldFail=true")
                 .exchange()
